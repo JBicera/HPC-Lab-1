@@ -32,7 +32,7 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 
     // Calculate number of sublists, s, based on number of processors.
     size_t numP = omp_get_num_procs();
-    size_t s = numP + (numP / 3); // Choose s > P for load balancing
+    size_t s = numP + (numP / 2); // Choose s > P for load balancing
 
     long* headNodes = (long*)malloc(s * sizeof(long));
     headNodes[0] = head; // Ensure the true head is included
