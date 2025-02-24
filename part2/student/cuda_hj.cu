@@ -65,7 +65,7 @@ __global__ void updateGlobalRanks(long *rank, const long *next, const long *orde
 }
 
 // Function to convert your OpenMP-based parallelListRanks into CUDA
-void parallelListRanksCUDA(long head, const long* next, long* rank, size_t n)
+void parallelListRanks(long head, const long* next, long* rank, size_t n)
 {
     // Calculate number of sublists, s
     size_t numP = 256;  // Default number of threads per block
