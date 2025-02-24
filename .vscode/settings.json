@@ -3,6 +3,7 @@
         "*.py": "python",
         "string.h": "c",
         "listutils.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "cmath": "c"
     }
 }

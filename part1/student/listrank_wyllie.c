@@ -10,7 +10,6 @@
 
 void updateRanks(long* rankIn, long* rankOut, long* next, size_t n);
 void jumpList(long* nextIn, long* nextOut, size_t n);
-void swapArrays(long* arr1, long* arr2, size_t n);
 
 void printArray(const char* name, long* arr, size_t n) {
     printf("%s: ", name);
@@ -33,20 +32,25 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 	// Set all values
     for (long i = 0; i < n; i++) {
         rank1[i] = 1;
-		rank2[i] = 1;
 		next1[i] = next[i];
-		next2[i] = next[i];
     }
 	rank1[head] = 0;
-	rank2[head] = 0;
+    memcpy(rank2, rank1, n * sizeof(long));  // Copy instead of looping
+    memcpy(next2, next, n * sizeof(long));
 	// Iterate through log n
-	for(int i = 0; i < ceil(log2((double)n)); i++)
+    int numIterations = ceil(log2((double)n));
+    long* temp;
+	for(int i = 0; i < numIterations; i++)
 	{
 		updateRanks(rank1,rank2,next1, n);
 		jumpList(next1,next2, n);
-		swapArrays(rank1,rank2,n);
-		swapArrays(next1,next2,n);
+
+        // Swap arrays
+        temp = rank1; rank1 = rank2; rank2 = temp;
+        temp = next1; next1 = next2; next2 = temp;
+
 	}
+    
 	memcpy(rank, rank1, n * sizeof(long));
 	// Free memory
 	free(rank1);
@@ -57,7 +61,7 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 void updateRanks(long* rankIn, long* rankOut, long* next, size_t n)
 {
     // Step 1: Parallelize the first loop
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < n; i++) {
         rankOut[i] = rankIn[i];
     }
@@ -78,7 +82,7 @@ void updateRanks(long* rankIn, long* rankOut, long* next, size_t n)
 }
 void jumpList(long* nextIn, long* nextOut, size_t n)
 {
-	#pragma omp parallel for schedule(dynamic)
+	#pragma omp parallel for schedule(static)
     for (size_t i = 0; i < n; i++) {
         if (nextIn[i] != -1) {
             nextOut[i] = nextIn[nextIn[i]];
@@ -88,14 +92,3 @@ void jumpList(long* nextIn, long* nextOut, size_t n)
     }
 
 }
-
-void swapArrays(long* arr1, long* arr2, size_t n) 
-{
-	#pragma omp parallel for
-    for (size_t i = 0; i < n; i++) {
-        long temp = arr1[i];
-        arr1[i] = arr2[i];
-        arr2[i] = temp;
-    }
-}
-

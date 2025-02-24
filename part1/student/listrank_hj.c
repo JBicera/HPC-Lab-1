@@ -90,9 +90,9 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
             current = next[current];
 
             // If we have reached the next head node (and it's not the last sublist)
-            if (current == orderedHeadNodes[i + 1]) {
+            if (i < s - 1 && current == orderedHeadNodes[i + 1]) {
                 break;
-            }
+            }            
         }
 
         // Store the sublist size for later use in Step 2
@@ -129,9 +129,9 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
             current = next[current];
 
             // If we've reached the next head node, stop
-            if (current == orderedHeadNodes[i + 1]) {
+            if (i < s - 1 && current == orderedHeadNodes[i + 1]) {
                 break;
-            }
+            }            
         }
     }
 
