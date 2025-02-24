@@ -1,0 +1,6 @@
+NAME:wyllie_public_3
+BINARY:correctness
+POINTVAL:5
+TYPE:compare
+INPUT:-t 10000 -n 5179
+COMPARE_EXCLUDE:na

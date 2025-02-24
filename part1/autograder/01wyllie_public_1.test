@@ -1,0 +1,6 @@
+NAME:wyllie_public_1
+BINARY:correctness
+POINTVAL:5
+TYPE:internal
+INPUT:-t 10 -n 100
+OUTPUT:

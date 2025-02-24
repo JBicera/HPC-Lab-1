@@ -1,0 +1,14 @@
+a65f60e1806be1b1e5bb1d8969eb2321  Makefile
+5eba3795e5bccef86057e18fa27d3da0  grader.sh
+06957e59428f17b6d18c3646e2546329  autograder/master.config
+bf27e7db99693f6faa1f10a7a4056ce7  utils/correctness.c
+10fccd0260042a27be2175105718f6bb  utils/listutils.c
+29edbb364f3f78c05269661979fee6cb  utils/listutils.h
+7727d6ba48bf42964191063a0d9683f8  utils/metrics.c
+4a7267b578110f4192330e240a339561  utils/timer.c
+79e98970de9c4f394249061cc42ae77f  utils/timer.h
+0b9591ff709fe82c2f006b9a3323e6ef  autograder/20hj_cuda_compile.test
+627d89df0574d737b0c03a2e2b3df899  autograder/21hj_cuda_public_1.test
+49b7b2a2a56efd40d1be005de16209c3  autograder/21hj_cuda_public_2.test
+c23a524b17df54257f8c708534fdac5f  autograder/21hj_cuda_public_3.test
+b8cd081cb07d1b71f2a63ae1f85e2502  autograder/21hj_cuda_public_3.test.ref

@@ -1,0 +1,5 @@
+NAME:wyllie_compilation
+BINARY:make
+TYPE:compile
+INPUT:IMPL=wyllie
+POINTVAL:5

@@ -1,0 +1,5 @@
+NAME:hj_compilation
+BINARY:make
+TYPE:compile
+INPUT:IMPL=hj
+POINTVAL:5
