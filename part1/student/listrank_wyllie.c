@@ -40,7 +40,7 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 	rank1[head] = 0;
 	rank2[head] = 0;
 	// Iterate through log n
-	for(int i = 0; i < ceil(log((double)n) / log(2.0)); i++)
+	for(int i = 0; i < ceil(log2((double)n)); i++)
 	{
 		updateRanks(rank1,rank2,next1, n);
 		jumpList(next1,next2, n);
@@ -78,16 +78,15 @@ void updateRanks(long* rankIn, long* rankOut, long* next, size_t n)
 }
 void jumpList(long* nextIn, long* nextOut, size_t n)
 {
-	#pragma omp parallel for
-    for (size_t i = 0; i < n; i++) // Ensure each thread works on different indices
-    {
-        if(nextIn[i] != -1) // Check if nextIn[i] is not nil (-1 represents nil in your code)
-        {
+	#pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < n; i++) {
+        if (nextIn[i] != -1) {
             nextOut[i] = nextIn[nextIn[i]];
-        }
-        else
+        } else {
             nextOut[i] = nextIn[i];
+        }
     }
+
 }
 
 void swapArrays(long* arr1, long* arr2, size_t n) 

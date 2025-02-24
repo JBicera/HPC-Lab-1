@@ -1,82 +1,79 @@
-#include <cuda_runtime.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <unistd.h>
+#include "listutils.h"
 
-void printArray(const char* name, long* arr, size_t n) {
-    printf("%s: ", name);
-    for (size_t i = 0; i < n; i++) {
-        printf("%ld ", arr[i]);
+__global__ void computeLocalRanksKernel(long* d_next, long* d_rank, long* d_orderedHeadNodes, long* d_sublistSizes, size_t s) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= s) return;
+
+    long current = d_orderedHeadNodes[i];
+    long localRank = 0;
+    long sublistSize = 0;
+
+    while (current != -1) {
+        d_rank[current] = localRank;
+        localRank++;
+        sublistSize++;
+
+        current = d_next[current];
+
+        if (i < s - 1 && current == d_orderedHeadNodes[i + 1]) {
+            break;
+        }
     }
-    printf("\n");
+
+    d_sublistSizes[i] = sublistSize;
 }
 
-// CUDA kernel to compute local ranks for each node in the sublists
-__global__ void computeLocalRanks(long *rank, const long *next, const long *orderedHeadNodes, long *sublistSizes, size_t s, size_t n)
-{
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;  // Thread index
+__global__ void computeGlobalRanksKernel(long* d_next, long* d_rank, long* d_orderedHeadNodes, long* d_sublistSizes, size_t s) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= s) return;
 
-    if (tid < s) {
-        long current = orderedHeadNodes[tid];
-        long localRank = 0;
-        long sublistSize = 0;
+    long current = d_orderedHeadNodes[i];
+    long globalHeadRank = d_rank[d_orderedHeadNodes[i]]; // The global rank of the current head node
 
-        // Traverse the sublist starting from the current head node
-        while (current != -1) {
-            rank[current] = localRank;  // Assign local rank
-            localRank++;
-            sublistSize++;
-
-            current = next[current];
-
-            // Stop if next head node is reached
-            if (current == orderedHeadNodes[tid + 1]) {
-                break;
-            }
+    // Traverse the sublist and update the global rank
+    while (current != -1) {
+        if (current != d_orderedHeadNodes[i]) {
+            d_rank[current] += globalHeadRank; // Update rank with global rank prefix sum
         }
 
-        sublistSizes[tid] = sublistSize;  // Store sublist size
-    }
-}
+        // Move to the next node
+        current = d_next[current];
 
-// CUDA kernel to update global ranks based on head nodes' ranks
-__global__ void updateGlobalRanks(long *rank, const long *next, const long *orderedHeadNodes, size_t s)
-{
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (tid < s) {
-        long current = orderedHeadNodes[tid];
-        long globalHeadRank = rank[orderedHeadNodes[tid]];  // Rank of the current head node
-
-        // Traverse the sublist again and update global rank
-        while (current != -1) {
-            if (current != orderedHeadNodes[tid]) {
-                rank[current] += globalHeadRank;  // Add global head rank to the current node's rank
-            }
-
-            current = next[current];
-
-            // Stop when we reach the next head node
-            if (current == orderedHeadNodes[tid + 1]) {
-                break;
-            }
+        // If we've reached the next head node, stop
+        if (i < s - 1 && current == d_orderedHeadNodes[i + 1]) {
+            break;
         }
     }
 }
 
-// Function to convert your OpenMP-based parallelListRanks into CUDA
-void parallelListRanks(long head, const long* next, long* rank, size_t n)
+
+extern "C" void parallelListRanks(const long head, const long* next, long* rank, const size_t n)
 {
-    // Calculate number of sublists, s
-    size_t numP = 256;  // Default number of threads per block
-    size_t s = numP + (numP / 3); // Choose s > P for load balancing
-    long *headNodes = (long*)malloc(s * sizeof(long));
+    // Get GPU properties
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0); // Get properties of GPU 0
+    size_t numSMs = prop.multiProcessorCount; // Number of SMs
+    size_t s = numSMs + (numSMs / 2);
+
+    // Device pointers
+    long *d_next, *d_rank, *d_orderedHeadNodes, *d_sublistSizes;
+
+    // Assume memory is allocated and initialized elsewhere
+    cudaMalloc((void**)&d_next, n * sizeof(long));
+    cudaMalloc((void**)&d_rank, n * sizeof(long));
+
+    // Copy data to device
+    cudaMemcpy(d_next, next, n * sizeof(long), cudaMemcpyHostToDevice);
+    cudaMemset(d_rank, 0, n * sizeof(long)); // Initialize rank array
+
+    // Step 1: Select head nodes
+    long* headNodes = (long*)malloc(s * sizeof(long));
     headNodes[0] = head;  // Ensure true head is included
 
-    // Step 1: Randomly choose head nodes for s sublists.
     srand(42);
-    int* used = (int*)calloc(n, sizeof(int));  // Track used nodes
-    used[head] = 1;  // True head is used
+    int* used = (int*)calloc(n, sizeof(int));
+    used[head] = 1;
     for (size_t i = 1; i < s; i++) {
         size_t idx;
         do {
@@ -87,12 +84,11 @@ void parallelListRanks(long head, const long* next, long* rank, size_t n)
     }
     free(used);
 
-    // Step 2: Create orderedHeadNodes list
+    // Create orderedHeadNodes
     char* inHead = (char*)calloc(n, sizeof(char));
     for (size_t i = 0; i < s; i++) {
         inHead[headNodes[i]] = 1;
     }
-
     long* orderedHeadNodes = (long*)malloc(s * sizeof(long));
     size_t count = 0;
     long current = head;
@@ -103,47 +99,51 @@ void parallelListRanks(long head, const long* next, long* rank, size_t n)
         }
         current = next[current];
     }
+    free(inHead);
     free(headNodes);
 
-    // Step 3: Memory allocation on device
-    long *d_rank, *d_next, *d_orderedHeadNodes, *d_sublistSizes;
-    cudaMalloc((void**)&d_rank, n * sizeof(long));
-    cudaMalloc((void**)&d_next, n * sizeof(long));
     cudaMalloc((void**)&d_orderedHeadNodes, s * sizeof(long));
-    cudaMalloc((void**)&d_sublistSizes, s * sizeof(long));
-
-    cudaMemcpy(d_rank, rank, n * sizeof(long), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_next, next, n * sizeof(long), cudaMemcpyHostToDevice);
     cudaMemcpy(d_orderedHeadNodes, orderedHeadNodes, s * sizeof(long), cudaMemcpyHostToDevice);
+    free(orderedHeadNodes);
 
-    // Step 4: Parallel traversal to compute local ranks (kernel launch)
-    int blockSize = 256;
-    int numBlocks = (s + blockSize - 1) / blockSize;
-    computeLocalRanks<<<numBlocks, blockSize>>>(d_rank, d_next, d_orderedHeadNodes, d_sublistSizes, s, n);
+    // Allocate and copy sublistSizes
+    long* sublistSizes = (long*)malloc(s * sizeof(long));
+    cudaMalloc((void**)&d_sublistSizes, s * sizeof(long));
+    cudaMemset(d_sublistSizes, 0, s * sizeof(long));
 
+
+    // Launch kernel
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (s + threadsPerBlock - 1) / threadsPerBlock;
+    
+    // Step 2
+    computeLocalRanksKernel<<<blocksPerGrid, threadsPerBlock>>>(d_next, d_rank, d_orderedHeadNodes, d_sublistSizes, s);
     cudaDeviceSynchronize();
 
-    // Step 5: Sequentially update the head nodes with the accumulated rank (can be done on host)
-    long* sublistSizes = (long*)malloc(s * sizeof(long));
+    // Copy results back to host
+    cudaMemcpy(rank, d_rank, n * sizeof(long), cudaMemcpyDeviceToHost);
     cudaMemcpy(sublistSizes, d_sublistSizes, s * sizeof(long), cudaMemcpyDeviceToHost);
 
-    long accumulatedRank = 0;
+    // Step 3: Sequentially update the head nodes with the accumulated rank
+    long accumulatedRank = 0;  // Initialize accumulated rank to 0
     for (size_t i = 0; i < s; i++) {
         long headNode = orderedHeadNodes[i];
+        // Update the rank of the head node to the accumulated rank
         rank[headNode] = accumulatedRank;
+        // After updating, increment the accumulated rank by the size of the current sublist
         accumulatedRank += sublistSizes[i];
     }
     free(sublistSizes);
 
-    // Step 6: Update global ranks for nodes in each sublist (kernel launch)
-    updateGlobalRanks<<<numBlocks, blockSize>>>(d_rank, d_next, d_orderedHeadNodes, s);
+    // Step 4
+    computeGlobalRanksKernel<<<blocksPerGrid, threadsPerBlock>>>(d_next, d_rank, d_orderedHeadNodes, d_sublistSizes, s);
     cudaDeviceSynchronize();
+    // Copy results back to host
+    cudaMemcpy(rank, d_rank, n * sizeof(long), cudaMemcpyDeviceToHost);
 
-    // Step 7: Free device memory
-    cudaFree(d_rank);
+    // Cleanup memory
     cudaFree(d_next);
+    cudaFree(d_rank);
     cudaFree(d_orderedHeadNodes);
     cudaFree(d_sublistSizes);
-
-    free(orderedHeadNodes);
 }
