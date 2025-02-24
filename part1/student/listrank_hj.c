@@ -4,6 +4,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 
 void printArray(const char* name, long* arr, size_t n) {
