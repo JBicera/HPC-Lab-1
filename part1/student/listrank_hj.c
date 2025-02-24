@@ -67,6 +67,8 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
         current = next[current];
     }
     free(headNodes);
+
+    
     // Step 2: Parallel traversal to compute local ranks for each node in the sublists
     long *sublistSizes = (long *)malloc(s * sizeof(long));
     memset(sublistSizes, 0, s * sizeof(long));  // Initialize all sublist sizes to 0

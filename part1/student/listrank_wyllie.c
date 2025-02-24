@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <math.h>
 #include <omp.h>
+#include <string.h>
+
 
 
 void updateRanks(long* rankIn, long* rankOut, long* next, size_t n);
@@ -69,7 +71,6 @@ void updateRanks(long* rankIn, long* rankOut, long* next, size_t n)
         // Each thread works on a portion of the array
         for (size_t i = thread_id; i < n; i += num_threads) {
             if (next[i] != -1) {  // If there is a valid next index
-                #pragma omp atomic
                 rankOut[next[i]] += rankIn[i];  // Each thread updates its part independently
             }
         }
