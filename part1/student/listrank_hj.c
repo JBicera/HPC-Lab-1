@@ -32,7 +32,7 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 
     // Calculate number of sublists, s, based on number of processors.
     size_t numP = omp_get_num_procs();
-    size_t s = numP + (numP / 2); // Choose s > P for load balancing
+    size_t s = numP + (numP / 3); // Choose s > P for load balancing
 
     long* headNodes = (long*)malloc(s * sizeof(long));
     headNodes[0] = head; // Ensure the true head is included
@@ -73,7 +73,7 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
     // Step 2: Parallel traversal to compute local ranks for each node in the sublists
     long *sublistSizes = (long *)malloc(s * sizeof(long));
     memset(sublistSizes, 0, s * sizeof(long));  // Initialize all sublist sizes to 0
-    #pragma omp parallel for schedule(dynamic, 1) 
+    #pragma omp parallel for schedule(guided) 
     for (size_t i = 0; i < s; i++) {
         long current = orderedHeadNodes[i];
         long localRank = 0;
@@ -112,7 +112,7 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 
     
     //Step 4: Update global ranks for nodes in each sublist
-    #pragma omp parallel for schedule(dynamic, 1) 
+    #pragma omp parallel for schedule(guided) 
     for (size_t i = 0; i < s; i++) {
         long current = orderedHeadNodes[i];
         long globalHeadRank = rank[orderedHeadNodes[i]]; // The global rank of the current head node
