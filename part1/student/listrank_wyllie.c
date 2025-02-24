@@ -60,23 +60,17 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 }
 void updateRanks(long* rankIn, long* rankOut, long* next, size_t n)
 {
-    // Step 1: Parallelize the first loop
+    
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < n; i++) {
         rankOut[i] = rankIn[i];
     }
 
-    // Step 2: Parallelize the second loop, dividing the work by thread number
-    #pragma omp parallel
-    {
-        int thread_id = omp_get_thread_num();  // Get thread number
-        int num_threads = omp_get_num_threads();  // Get total number of threads
-
-        // Each thread works on a portion of the array
-        for (size_t i = thread_id; i < n; i += num_threads) {
-            if (next[i] != -1) {  // If there is a valid next index
-                rankOut[next[i]] += rankIn[i];  // Each thread updates its part independently
-            }
+    #pragma omp parallel for schedule(guided) 
+    for (size_t i = 0; i < n; i++) {
+        if (next[i] != -1) {  
+            #pragma omp atomic
+            rankOut[next[i]] += rankIn[i];  
         }
     }
 }
