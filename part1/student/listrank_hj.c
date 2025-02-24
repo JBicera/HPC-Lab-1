@@ -50,17 +50,20 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
         used[idx] = 1;
     }
     free(used);
+
+    // Create temporary bit map to show which nodes are head nodes
+    char* inHead = (char*)calloc(n, sizeof(char));
+    for (size_t i = 0; i < s; i++) {
+        inHead[ headNodes[i] ] = 1;
+    }
     // Create an orderedHeadNodes list 
     long* orderedHeadNodes = (long*)malloc(s * sizeof(long));
     size_t count = 0;
     long current = head;
     while (current != -1 && count < s) {
-        for (size_t i = 0; i < s; i++) {
-            // Check if the current node matches the head node in orderedHeadNodes
-            if (current == headNodes[i]) {
-                orderedHeadNodes[count++] = current;
-                break;
-            }
+        if (inHead[current]) {  // O(1) membership check
+            orderedHeadNodes[count] = current;
+            count++;
         }
         current = next[current];
     }
