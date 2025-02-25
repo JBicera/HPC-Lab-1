@@ -128,6 +128,7 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     if (err != cudaSuccess) {
         printf("computeLocalRanksKernel failed: %s\n", cudaGetErrorString(err));
     }
+    cudaDeviceSynchronize();
 
     // Copy results back to host
     cudaMemcpy(rank, d_rank, n * sizeof(long), cudaMemcpyDeviceToHost);
@@ -150,6 +151,8 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     if (err != cudaSuccess) {
         printf("computeGlobalRanksKernel failed: %s\n", cudaGetErrorString(err));
     }
+    cudaDeviceSynchronize();
+    
     // Copy results back to host
     cudaMemcpy(rank, d_rank, n * sizeof(long), cudaMemcpyDeviceToHost);
 
