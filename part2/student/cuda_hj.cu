@@ -11,6 +11,7 @@ __global__ void computeLocalRanksKernel(long* d_next, long* d_rank, long* d_orde
 
     while (current != -1) {
         d_rank[current] = localRank;
+        printf("Thread %d: Node %ld gets rank %ld\n", i, current, localRank);
         localRank++;
         sublistSize++;
 
@@ -99,6 +100,12 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
         }
         current = next[current];
     }
+    printf("Ordered head nodes: ");
+    for (size_t i = 0; i < s; i++) {
+        printf("%ld ", orderedHeadNodes[i]);
+    }
+    printf("\n");
+
     free(inHead);
     free(headNodes);
 
@@ -118,7 +125,10 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     
     // Step 2
     computeLocalRanksKernel<<<blocksPerGrid, threadsPerBlock>>>(d_next, d_rank, d_orderedHeadNodes, d_sublistSizes, s);
-    cudaDeviceSynchronize();
+    cudaError_t err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {
+        printf("computeLocalRanksKernel failed: %s\n", cudaGetErrorString(err));
+    }
 
     // Copy results back to host
     cudaMemcpy(rank, d_rank, n * sizeof(long), cudaMemcpyDeviceToHost);
@@ -137,7 +147,10 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
 
     // Step 4
     computeGlobalRanksKernel<<<blocksPerGrid, threadsPerBlock>>>(d_next, d_rank, d_orderedHeadNodes, d_sublistSizes, s);
-    cudaDeviceSynchronize();
+    err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {
+        printf("computeGlobalRanksKernel failed: %s\n", cudaGetErrorString(err));
+    }
     // Copy results back to host
     cudaMemcpy(rank, d_rank, n * sizeof(long), cudaMemcpyDeviceToHost);
 
