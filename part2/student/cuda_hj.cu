@@ -59,7 +59,7 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
         used[idx] = 1;
     }
     free(used);
-    
+
     // Create orderedHeadNodes
     char* inHead = (char*)calloc(n, sizeof(char));
     for (size_t i = 0; i < s; i++) {
@@ -69,6 +69,7 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     size_t count = 0;
     long current = head;
     while (current != -1 && count < s) {
+        printf("Traversing: current = %ld, inHead[current] = %d\n", current, inHead[current]);
         if (inHead[current]) {
             orderedHeadNodes[count] = current;
             count++;
