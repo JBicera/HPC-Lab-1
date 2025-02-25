@@ -82,7 +82,7 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
 
     free(inHead);
     free(headNodes);
-
+    /*
     cudaMalloc((void**)&dOrderedHeadNodes, s * sizeof(long));
     cudaMemcpy(dOrderedHeadNodes, orderedHeadNodes, s * sizeof(long), cudaMemcpyHostToDevice);
 
@@ -101,11 +101,12 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     if (err != cudaSuccess) {
         printf("computeLocalRanksKernel failed: %s\n", cudaGetErrorString(err));
     }
+    
 
     // Copy results back to host
     cudaMemcpy(rank, dRank, n * sizeof(long), cudaMemcpyDeviceToHost);
     cudaMemcpy(sublistSizes, dSublistSizes, s * sizeof(long), cudaMemcpyDeviceToHost);
-
+    
     printf("Final rank array: ");
     for (size_t i = 0; i < n; i++) {
         printf("%ld ", rank[i]);
@@ -118,4 +119,5 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     cudaFree(dRank);
     cudaFree(dOrderedHeadNodes);
     cudaFree(dSublistSizes);
+    */
 }
