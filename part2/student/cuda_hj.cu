@@ -103,6 +103,13 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
         current = next[current];
     }
 
+    printf("Ordered head nodes: ");
+    for (size_t i = 0; i < s; i++) {
+        printf("%ld ", orderedHeadNodes[i]);
+    }
+    printf("\n");
+    fflush(stdout);
+    
     // Copy ordered head nodes to the device
     cudaMemcpy(dOrderedHeadNodes, orderedHeadNodes, s * sizeof(long), cudaMemcpyHostToDevice);
 
@@ -123,6 +130,7 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     if (err != cudaSuccess) {
         printf("CUDA error: %s\n", cudaGetErrorString(err));
     }
+    fflush(stdout);
 
     // Step 3: Sequentially update the head nodes with the accumulated rank
     long* sublistSizes = (long*)malloc(s * sizeof(long));
