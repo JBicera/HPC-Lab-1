@@ -61,12 +61,12 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 void updateRanks(long* rankIn, long* rankOut, long* next, size_t n)
 {
     
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel for 
     for (size_t i = 0; i < n; i++) {
         rankOut[i] = rankIn[i];
     }
 
-    #pragma omp parallel for schedule(guided) 
+    #pragma omp parallel for 
     for (size_t i = 0; i < n; i++) {
         if (next[i] != -1) {  
             #pragma omp atomic
@@ -76,7 +76,7 @@ void updateRanks(long* rankIn, long* rankOut, long* next, size_t n)
 }
 void jumpList(long* nextIn, long* nextOut, size_t n)
 {
-	#pragma omp parallel for schedule(static)
+	#pragma omp parallel for 
     for (size_t i = 0; i < n; i++) {
         if (nextIn[i] != -1) {
             nextOut[i] = nextIn[nextIn[i]];
