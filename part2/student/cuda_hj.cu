@@ -9,30 +9,6 @@ __global__ void setAllToOneKernel(long* arr, size_t n) {
     }
 }
 
-__global__ void computeLocalRanksKernel(long* dNext, long* dRank, long* dOrderedHeadNodes, long* dSublistSizes, size_t s) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= s) return;
-
-    long current = dOrderedHeadNodes[i];
-    long localRank = 0;
-    long sublistSize = 0;
-
-    while (current != -1) {
-        dRank[current] = localRank;
-        printf("Thread %d: Node %ld gets rank %ld\n", i, current, localRank);
-        localRank++;
-        sublistSize++;
-
-        current = dNext[current];
-
-        if (i < s - 1 && current == dOrderedHeadNodes[i + 1]) {
-            break;
-        }
-    }
-
-    dSublistSizes[i] = sublistSize;
-}
-
 extern "C" void parallelListRanks(const long head, const long* next, long* rank, const size_t n)
 {
     // Get GPU properties
@@ -83,6 +59,7 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
         used[idx] = 1;
     }
     free(used);
+    
     // Create orderedHeadNodes
     char* inHead = (char*)calloc(n, sizeof(char));
     for (size_t i = 0; i < s; i++) {
@@ -106,42 +83,11 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
 
     free(inHead);
     free(headNodes);
-    /*
-    cudaMalloc((void**)&dOrderedHeadNodes, s * sizeof(long));
-    cudaMemcpy(dOrderedHeadNodes, orderedHeadNodes, s * sizeof(long), cudaMemcpyHostToDevice);
-
-    // Allocate and copy sublistSizes
-    long* sublistSizes = (long*)malloc(s * sizeof(long));
-    cudaMalloc((void**)&dSublistSizes, s * sizeof(long));
-    cudaMemset(dSublistSizes, 0, s * sizeof(long));
-
-    // Launch kernel
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (s + threadsPerBlock - 1) / threadsPerBlock;
     
-    // Step 2
-    computeLocalRanksKernel<<<blocksPerGrid, threadsPerBlock>>>(dNext, dRank, dOrderedHeadNodes, dSublistSizes, s);
-    cudaError_t err = cudaDeviceSynchronize();
-    if (err != cudaSuccess) {
-        printf("computeLocalRanksKernel failed: %s\n", cudaGetErrorString(err));
-    }
-    
-
-    // Copy results back to host
-    cudaMemcpy(rank, dRank, n * sizeof(long), cudaMemcpyDeviceToHost);
-    cudaMemcpy(sublistSizes, dSublistSizes, s * sizeof(long), cudaMemcpyDeviceToHost);
-    
-    printf("Final rank array: ");
-    for (size_t i = 0; i < n; i++) {
-        printf("%ld ", rank[i]);
-    }
-    printf("\n");
-
     // Cleanup memory
-    free(sublistSizes);
     cudaFree(dNext);
     cudaFree(dRank);
     cudaFree(dOrderedHeadNodes);
     cudaFree(dSublistSizes);
-    */
+    
 }
