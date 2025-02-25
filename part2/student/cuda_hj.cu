@@ -1,6 +1,55 @@
 #include <unistd.h>
 #include "listutils.h"
 
+// CUDA kernel to compute local ranks and sublist sizes
+__global__ void parallelListRanksKernel(const long* next, long* rank, const long* orderedHeadNodes, long* sublistSizes, size_t s, size_t n)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < s) {
+        long current = orderedHeadNodes[idx];
+        long localRank = 0;
+        long sublistSize = 0;
+
+        while (current != -1) {
+            rank[current] = localRank;
+            localRank++;
+            sublistSize++;
+
+            current = next[current];
+
+            // If we have reached the next head node, break
+            if (idx < s - 1 && current == orderedHeadNodes[idx + 1]) {
+                break;
+            }
+        }
+
+        sublistSizes[idx] = sublistSize;
+    }
+}
+
+// CUDA kernel to update global ranks based on head node ranks
+__global__ void parallelGlobalRankUpdateKernel(const long* next, long* rank, const long* orderedHeadNodes, size_t s, size_t n)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < s) {
+        long current = orderedHeadNodes[idx];
+        long globalHeadRank = rank[orderedHeadNodes[idx]];
+
+        while (current != -1) {
+            if (current != orderedHeadNodes[idx]) {
+                rank[current] += globalHeadRank;
+            }
+
+            current = next[current];
+
+            // If we've reached the next head node, break
+            if (idx < s - 1 && current == orderedHeadNodes[idx + 1]) {
+                break;
+            }
+        }
+    }
+}
+
 extern "C" void parallelListRanks(const long head, const long* next, long* rank, const size_t n)
 {
     // Get GPU properties
@@ -104,51 +153,4 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     cudaFree(dSublistSizes);
 }
 
-// CUDA kernel to compute local ranks and sublist sizes
-__global__ void parallelListRanksKernel(const long* next, long* rank, const long* orderedHeadNodes, long* sublistSizes, size_t s, size_t n)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < s) {
-        long current = orderedHeadNodes[idx];
-        long localRank = 0;
-        long sublistSize = 0;
 
-        while (current != -1) {
-            rank[current] = localRank;
-            localRank++;
-            sublistSize++;
-
-            current = next[current];
-
-            // If we have reached the next head node, break
-            if (idx < s - 1 && current == orderedHeadNodes[idx + 1]) {
-                break;
-            }
-        }
-
-        sublistSizes[idx] = sublistSize;
-    }
-}
-
-// CUDA kernel to update global ranks based on head node ranks
-__global__ void parallelGlobalRankUpdateKernel(const long* next, long* rank, const long* orderedHeadNodes, size_t s, size_t n)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < s) {
-        long current = orderedHeadNodes[idx];
-        long globalHeadRank = rank[orderedHeadNodes[idx]];
-
-        while (current != -1) {
-            if (current != orderedHeadNodes[idx]) {
-                rank[current] += globalHeadRank;
-            }
-
-            current = next[current];
-
-            // If we've reached the next head node, break
-            if (idx < s - 1 && current == orderedHeadNodes[idx + 1]) {
-                break;
-            }
-        }
-    }
-}
