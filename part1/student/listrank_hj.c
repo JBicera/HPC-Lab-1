@@ -38,12 +38,14 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
     headNodes[0] = head; // Ensure the true head is included
 
     // Step 1: Randomly choose head nodes for s sublists.
-    srand(42); // reproducible randomness
-    int* used = (int*)calloc(n, sizeof(int)); // track which indices are chosen
+    srand(42);
+    int* used = (int*)calloc(n, sizeof(int)); // Bitmap to track seen nodes
     used[head] = 1; // true head is used
-    for (size_t i = 1; i < s; i++) {
+    for (size_t i = 1; i < s; i++) 
+    {
         size_t idx;
-        do {
+        do 
+        {
             idx = rand() % n;
         } while (used[idx] == 1);
         headNodes[i] = idx;
@@ -53,15 +55,18 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
 
     // Create temporary bit map to show which nodes are head nodes
     char* inHead = (char*)calloc(n, sizeof(char));
-    for (size_t i = 0; i < s; i++) {
+    for (size_t i = 0; i < s; i++) 
         inHead[ headNodes[i] ] = 1;
-    }
+    
     // Create an orderedHeadNodes list 
     long* orderedHeadNodes = (long*)malloc(s * sizeof(long));
     size_t count = 0;
     long current = head;
-    while (current != -1 && count < s) {
-        if (inHead[current]) {  // O(1) membership check
+    while (current != -1 && count < s) 
+    {
+        // O(1) membership check
+        if (inHead[current]) 
+        {  
             orderedHeadNodes[count] = current;
             count++;
         }
@@ -72,15 +77,17 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
     
     // Step 2: Parallel traversal to compute local ranks for each node in the sublists
     long *sublistSizes = (long *)malloc(s * sizeof(long));
-    memset(sublistSizes, 0, s * sizeof(long));  // Initialize all sublist sizes to 0
+    memset(sublistSizes, 0, s * sizeof(long));  
     #pragma omp parallel for  
-    for (size_t i = 0; i < s; i++) {
+    for (size_t i = 0; i < s; i++) 
+    {
         long current = orderedHeadNodes[i];
         long localRank = 0;
         long sublistSize = 0;
 
         // Traverse the sublist starting from the current head node
-        while (current != -1) {
+        while (current != -1) 
+        {
             // Assign the local rank to the current node
             rank[current] = localRank;
             localRank++;
@@ -90,18 +97,18 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
             current = next[current];
 
             // If we have reached the next head node (and it's not the last sublist)
-            if (i < s - 1 && current == orderedHeadNodes[i + 1]) {
+            if (i < s - 1 && current == orderedHeadNodes[i + 1]) 
                 break;
-            }            
         }
 
         // Store the sublist size for later use in Step 2
-        sublistSizes[i] = sublistSize;  // Keep track of sublist sizes
+        sublistSizes[i] = sublistSize;  // Keep track of sublist sizes for step 3
     }
 
     // Step 3: Sequentially update the head nodes with the accumulated rank
     long accumulatedRank = 0;  // Initialize accumulated rank to 0
-    for (size_t i = 0; i < s; i++) {
+    for (size_t i = 0; i < s; i++) 
+    {
         long headNode = orderedHeadNodes[i];
         // Update the rank of the head node to the accumulated rank
         rank[headNode] = accumulatedRank;
@@ -121,17 +128,14 @@ void parallelListRanks (long head, const long* next, long* rank, size_t n)
         while (current != -1) 
         {
             if (current != orderedHeadNodes[i]) 
-            {
                 rank[current] += globalHeadRank; // Update rank with global rank prefix sum
-            }
 
             // Move to the next node
             current = next[current];
 
             // If we've reached the next head node, stop
-            if (i < s - 1 && current == orderedHeadNodes[i + 1]) {
-                break;
-            }            
+            if (i < s - 1 && current == orderedHeadNodes[i + 1]) 
+                break;    
         }
     }
 
