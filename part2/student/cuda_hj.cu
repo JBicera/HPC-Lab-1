@@ -1,6 +1,14 @@
 #include <unistd.h>
 #include "listutils.h"
 
+// Debugging kernel: set all elements of an array to 1
+__global__ void setAllToOneKernel(long* arr, size_t n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        arr[i] = 1;
+    }
+}
+
 __global__ void computeLocalRanksKernel(long* dNext, long* dRank, long* dOrderedHeadNodes, long* dSublistSizes, size_t s) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= s) return;
@@ -43,6 +51,22 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     // Copy data to device
     cudaMemcpy(dNext, next, n * sizeof(long), cudaMemcpyHostToDevice);
     cudaMemset(dRank, 0, n * sizeof(long)); // Initialize rank array
+
+    {
+        int threadsPerBlock = 256;
+        int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
+        setAllToOneKernel<<<blocksPerGrid, threadsPerBlock>>>(dRank, n);
+        cudaDeviceSynchronize();
+        // Optionally, copy back and print to check:
+        long* debugRank = (long*)malloc(n * sizeof(long));
+        cudaMemcpy(debugRank, dRank, n * sizeof(long), cudaMemcpyDeviceToHost);
+        printf("Debug: dRank after setAllToOneKernel: ");
+        for (size_t i = 0; i < n; i++) {
+            printf("%ld ", debugRank[i]);
+        }
+        printf("\n");
+        free(debugRank);
+    }
 
     // Step 1: Select head nodes
     long* headNodes = (long*)malloc(s * sizeof(long));
