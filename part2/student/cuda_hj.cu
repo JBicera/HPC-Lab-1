@@ -141,6 +141,12 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
     // Copy results back to host
     cudaMemcpy(rank, d_rank, n * sizeof(long), cudaMemcpyDeviceToHost);
 
+    printf("Final rank array: ");
+    for (size_t i = 0; i < n; i++) {
+        printf("%ld ", rank[i]);
+    }
+    printf("\n");
+
     // Cleanup memory
     cudaFree(d_next);
     cudaFree(d_rank);
