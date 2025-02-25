@@ -111,7 +111,6 @@ extern "C" void parallelListRanks(const long head, const long* next, long* rank,
 
     cudaMalloc((void**)&d_orderedHeadNodes, s * sizeof(long));
     cudaMemcpy(d_orderedHeadNodes, orderedHeadNodes, s * sizeof(long), cudaMemcpyHostToDevice);
-    free(orderedHeadNodes);
 
     // Allocate and copy sublistSizes
     long* sublistSizes = (long*)malloc(s * sizeof(long));
